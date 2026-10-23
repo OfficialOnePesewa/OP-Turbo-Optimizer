@@ -2,8 +2,9 @@
 # ==========================================================
 #  BADVPN-UDPGW INSTALLER - OP Turbo
 #  by OfficialOnePesewa
-#  Builds ambrop72/badvpn from source (works on Debian & Ubuntu),
-#  runs it as a systemd service on 127.0.0.1:7300.
+#  Builds ambrop72/badvpn from source (Debian & Ubuntu,
+#  including CMake 4.x), runs it as a systemd service on
+#  127.0.0.1:7300.
 # ==========================================================
 set -euo pipefail
 
@@ -32,8 +33,9 @@ check_os() {
 install_deps() {
   info "Installing build dependencies..."
   export DEBIAN_FRONTEND=noninteractive
-  apt-get update -y
-  apt-get install -y build-essential cmake git ca-certificates
+  apt-get update -y >/dev/null
+  apt-get install -y build-essential cmake git ca-certificates >/dev/null
+  ok "Build dependencies ready"
 }
 
 build_badvpn() {
@@ -42,9 +44,16 @@ build_badvpn() {
   git clone --depth 1 "$SRC_URL" "$BUILD_DIR"
   mkdir -p "$BUILD_DIR/build"
   cd "$BUILD_DIR/build"
-  cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local \
-           -DBUILD_NOTHING_BY_DEFAULT=1 -DBUILD_UDPGW=1 >/dev/null
-  make -j"$(nproc)" >/dev/null
+
+  # CMake 4.x removed compatibility with cmake_minimum_required < 3.5.
+  # This policy override lets the upstream CMakeLists.txt configure.
+  cmake .. \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DBUILD_NOTHING_BY_DEFAULT=1 \
+    -DBUILD_UDPGW=1
+
+  make -j"$(nproc)"
 
   local built
   built=$(find "$BUILD_DIR/build" -type f -name badvpn-udpgw | head -n1)
